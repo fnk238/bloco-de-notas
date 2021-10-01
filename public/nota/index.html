@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="stylesheet" href="styles.css" />
+
+    <title>Bloco de notas</title>
+    <script>
+      var estalogado = localStorage.getItem("logado")
+      if(!estalogado){
+        alert('é nescessario estar logado')
+        window.location.href="/"
+      }
+
+      function logout(){
+        localStorage.removeItem ("logado")
+        window.location.href="/"
+      }
+    </script>
+  </head>
+  <body>
+    <button onclick="logout()">LogOut </button>
+    <div class="container">
+      <h1>Bloco de notas</h1>
+
+      <fieldset>
+        <legend>Digite seu nome e sua anotação</legend>
+
+        <div>
+          <form id="meu-form">
+            <div>
+              <label for="nome">Nome:</label>
+              <input type="text" id="nome" name="nome" required />
+            </div>
+            <div>
+              <label for="nota">Nota:</label>
+              <input type="text" id="nota" name="nota" required />
+            </div>
+
+            <input type="submit" value="Salvar" />
+          </form>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Notas</legend>
+
+        <div>
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Nota</th>
+              </tr>
+            </thead>
+
+            <tbody></tbody>
+          </table>
+        </div>
+      </fieldset>
+    </div>
+
+    <script>
+      const form = document.querySelector("#meu-form")
+const tbodyUsers = document.querySelector(".users-table tbody")
+
+const db = openDatabase("MyNote3", "2.0", "MyNote3", 4048);
+
+db.transaction(
+  transaction => transaction.executeSql(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY, 
+      nome TEXT, 
+      nota TEXT
+    )
+  `)
+);
+
+function removeUser(userId) {
+  function success() {
+    console.log('Usuário removido com sucesso!.')
+    updateUserTable()
+  }
+
+  const error = (_, error) => console.error('Ocorreu um erro excluindo o usuário.', error)
+
+  db.transaction(
+    transaction => transaction.executeSql('DELETE FROM users WHERE id = ?', [userId], success, error)
+  );
+}
+
+function updateUserTable() {
+  function success(_, { rows: users }) {
+    const tableRows = [...users].map(({ id, nome, nota }) => `
+      <tr>
+        <td>${nome}</td>
+        <td>${nota}</td>
+        <td><button onclick="removeUser(${id})">EXCLUIR</button></td>
+      </tr>
+    `)
+
+    tbodyUsers.innerHTML = tableRows.join('')
+  }
+
+  const error = (_, error) => console.error('Ocorreu um erro buscando os usuários.', error)
+
+  db.transaction(
+    transaction => transaction.executeSql('SELECT * FROM users', [], success, error)
+  );
+}
+
+function saveUser(event) {
+  event.preventDefault();
+
+  const { nome, nota } = this;
+  const nomeDigitado = nome.value;
+  const notaDigitada = nota.value;
+
+  db.transaction((transaction) => {
+    transaction.executeSql(
+      'INSERT INTO users (nome, nota) VALUES(?, ?)',
+      [nomeDigitado, notaDigitada],
+      () => console.log('Usuário inserido com sucesso'),
+      (_, error) => console.error('Erro na inserção do usuário!', error)
+    );
+  });
+
+  updateUserTable()
+}
+
+form.addEventListener('submit', saveUser);
+window.addEventListener('load', updateUserTable)
+    </script>
+    <style>
+      html,
+body,
+input,
+button,
+textarea {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  outline: 0;
+}
+
+html,
+body {
+  width: 100vw;
+  height: 100vh;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.container h1 {
+  align-self: center;
+}
+
+#meu-form {
+  display: flex;
+}
+
+#meu-form div {
+  padding: 4px;
+}
+
+fieldset {
+  margin: 8px 32px;
+}
+
+fieldset legend {
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.users-table {
+  border-collapse: collapse;
+}
+
+.users-table th,
+.users-table td {
+  padding: 4px 8px;
+}
+
+    </style>
+  </body>
+</html>
